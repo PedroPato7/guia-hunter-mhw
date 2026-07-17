@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:guia_mhw_app/widgets/mhw_loading.dart';
-import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-// IMPORTANTE: Agora usando o constants.dart em vez do tradutor
+import '../widgets/mhw_loading.dart';
 import '../utils/constants.dart';
+import '../providers/calculadora_provider.dart'; 
 
-// === TELA 3: CALCULADORA DE MATERIAIS ===
+// Tela responsável pela lista de armaduras e cálculo de materiais (Wishlist)
 class Tela3Calculadora extends StatefulWidget {
   const Tela3Calculadora({super.key});
 
@@ -15,22 +16,19 @@ class Tela3Calculadora extends StatefulWidget {
 }
 
 class _Tela3CalculadoraState extends State<Tela3Calculadora> {
-  // Agora temos duas listas: a completa e a que está sendo exibida na tela
+  // Controle de estado local
   List<dynamic> armadurasOriginais = [];
   List<dynamic> armadurasExibidas = [];
-
   bool carregando = true;
-  String _rankSelecionado = 'low'; // Estado do Rank
-
-  // AGORA GUARDAMOS O ID (e não a posição/index) PARA NÃO DAR BUG AO FILTRAR
-  Set<int> selecionadosIds = {};
-
+  String _rankSelecionado = 'low';
+  
   @override
   void initState() {
     super.initState();
     _buscarArmaduras();
   }
 
+  // Busca dados da API e aplica o filtro inicial dos monstros
   Future<void> _buscarArmaduras() async {
     final url = Uri.parse('https://mhw-db.com/armor');
     try {
@@ -38,7 +36,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
       if (resposta.statusCode == 200) {
         final dadosBrutos = jsonDecode(resposta.body) as List<dynamic>;
 
-        // 1. Primeiro filtramos pelo escopo de monstros (constante)
+        // Mantem apenas as armaduras dos monstros definidos nas constantes
         final armadurasFiltradas = dadosBrutos.where((armadura) {
           final nomeArmadura = (armadura['name'] ?? '').toString().toLowerCase();
           return monstrosFoco.any((nomeMonstro) =>
@@ -50,7 +48,6 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
           carregando = false;
         });
 
-        // 2. Depois aplicamos o filtro de Rank inicial
         _filtrarPorRank();
       }
     } catch (erro) {
@@ -59,7 +56,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
     }
   }
 
-  // Função que atualiza a lista da tela baseada nos botões de Rank
+  // Atualiza a lista exibida conforme o rank selecionado
   void _filtrarPorRank() {
     setState(() {
       armadurasExibidas = armadurasOriginais.where((armadura) {
@@ -68,12 +65,14 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
     });
   }
 
-  // Lógica de cálculo atualizada para buscar por ID
+  // Processa os itens selecionados e soma os materiais necessários
   void _calcularMateriais() {
     Map<String, int> materiaisNecessarios = {};
+    
+    // Obtém os IDs salvos no gerenciador de estado (Provider)
+    final selecionadosIds = context.read<CalculadoraProvider>().itensDesejados;
 
     for (int id in selecionadosIds) {
-      // Busca a armadura completa na lista original baseada no ID selecionado
       final armadura = armadurasOriginais.firstWhere((a) => a['id'] == id, orElse: () => null);
 
       if (armadura != null) {
@@ -81,6 +80,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
         if (crafting != null && crafting['materials'] != null) {
           final materiais = crafting['materials'] as List<dynamic>;
 
+          // Soma a quantidade de cada material necessário
           for (var mat in materiais) {
             final nomeMaterial = mat['item']['name'] ?? 'Unknown Material';
             final int quantidade = (mat['quantity'] ?? 0).toInt();
@@ -95,7 +95,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
       }
     }
 
-    // Mostra o resultado da soma num Pop-up
+    // Exibe o resultado do cálculo em um Dialog
     showDialog(
         context: context,
         builder: (context) {
@@ -132,6 +132,10 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
 
   @override
   Widget build(BuildContext context) {
+    // Escuta as mudanças do Provider para atualizar a UI reativamente
+    final provider = context.watch<CalculadoraProvider>();
+    final selecionadosIds = provider.itensDesejados;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Forja: Calculadora'),
@@ -141,7 +145,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
           ? const MhwLoading()
           : Column(
         children: [
-          // === BOTÕES DE FILTRO DE RANK ===
+          // Filtros de Rank
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -185,7 +189,7 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
             ),
           ),
 
-          // === LISTA DE ARMADURAS ===
+          // Lista de armaduras renderizadas dinamicamente
           Expanded(
             child: armadurasExibidas.isEmpty
                 ? Center(
@@ -201,22 +205,20 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
                 final id = armadura['id'];
                 final nome = armadura['name'] ?? 'Unknown Armor';
 
-                // Verifica se o ID desta armadura está na nossa lista de selecionados
                 final isSelecionado = selecionadosIds.contains(id);
 
                 return CheckboxListTile(
                   title: Text(nome),
-                  subtitle: Text('ID: $id | Rank: ${armadura['rank']}'), // Opcional, bom para mostrar que é dinâmico
+                  subtitle: Text('ID: $id | Rank: ${armadura['rank']}'),
                   value: isSelecionado,
                   activeColor: Colors.orange,
                   onChanged: (bool? valor) {
-                    setState(() {
-                      if (valor == true) {
-                        selecionadosIds.add(id);
-                      } else {
-                        selecionadosIds.remove(id);
-                      }
-                    });
+                    // Adiciona ou remove itens persistindo no Hive via Provider
+                    if (valor == true) {
+                      provider.adicionarItem(id);
+                    } else {
+                      provider.removerItem(id);
+                    }
                   },
                 );
               },
@@ -224,12 +226,12 @@ class _Tela3CalculadoraState extends State<Tela3Calculadora> {
           ),
         ],
       ),
-      // Botão que ativa o cálculo
+      // Aciona o cálculo e exibe a quantidade de itens na Wishlist
       floatingActionButton: FloatingActionButton.extended(
         onPressed: selecionadosIds.isEmpty ? null : _calcularMateriais,
         backgroundColor: selecionadosIds.isEmpty ? Colors.grey : Colors.orange,
         icon: const Icon(Icons.calculate),
-        label: Text('Calculate (${selecionadosIds.length})'), // Mostra quantos itens estão selecionados
+        label: Text('Calculate (${selecionadosIds.length})'),
       ),
     );
   }

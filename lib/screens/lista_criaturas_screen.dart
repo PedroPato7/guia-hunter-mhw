@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:guia_mhw_app/widgets/mhw_loading.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import '../widgets/mhw_loading.dart';
 import '../utils/constants.dart';
 import 'calculadora_screen.dart';
 import 'detalhes_screen.dart';
 
-// === TELA 1: LISTA DE CRIATURAS (Consumindo a API) ===
+// Tela principal: Lista as criaturas, gerencia os filtros locais e a navegação inicial
 class Tela1Criaturas extends StatefulWidget {
   const Tela1Criaturas({super.key});
 
@@ -15,16 +16,15 @@ class Tela1Criaturas extends StatefulWidget {
 }
 
 class _Tela1CriaturasState extends State<Tela1Criaturas> {
-  // Agora temos duas listas para o filtro funcionar
+  // Controle de estado dos dados
   List<dynamic> monstrosOriginais = [];
   List<dynamic> monstrosFiltrados = [];
+  bool carregando = true;
 
-  // Variáveis do filtro
+  // Variáveis de filtro
   String termoBusca = "";
   String especieSelecionada = "Todas";
   List<String> especiesDisponiveis = ["Todas"];
-
-  bool carregando = true;
 
   @override
   void initState() {
@@ -32,11 +32,12 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
     _buscarMonstrosAPI();
   }
 
+  // Formata a string recebida da API para bater com o nome do arquivo da imagem local
   String _formatarNomeArquivo(String nomeOriginal) {
     return nomeOriginal.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
   }
 
-// Tenta carregar a imagem, se não achar, mostra o ícone padrão
+  // Tenta carregar a imagem local da criatura; usa um ícone padrão em caso de erro
   Widget _construirAvatarMonstro(String nomeMonstro) {
     String nomeArquivo = _formatarNomeArquivo(nomeMonstro);
     String caminhoAsset = 'assets/images/monsters/$nomeArquivo.png';
@@ -57,6 +58,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
     );
   }
 
+  // Busca dados da API e aplica o filtro de escopo do MVP (monstrosFoco)
   Future<void> _buscarMonstrosAPI() async {
     final url = Uri.parse('https://mhw-db.com/monsters');
     try {
@@ -64,12 +66,13 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
       if (resposta.statusCode == 200) {
         final dadosBrutos = jsonDecode(resposta.body) as List<dynamic>;
 
-        // Filtrar apenas as criatuuras da lista: "monstrosFoco"
+        // Mantém apenas as criaturas pertencentes à lista constante
         final dadosFiltrados = dadosBrutos.where((monstro) {
           final nome = monstro['name'] ?? '';
           return monstrosFoco.contains(nome);
-          }).toList();
+        }).toList();
 
+        // Extrai as espécies únicas para montar o Dropdown de filtros
         Set<String> especies = {"Todas"};
         for (var monstro in dadosFiltrados) {
           if (monstro['species'] != null) {
@@ -90,7 +93,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
     }
   }
 
-  // Função mágica que filtra a lista na hora
+  // Aplica os filtros de nome e espécie à lista exibida localmente
   void _filtrarMonstros() {
     setState(() {
       monstrosFiltrados = monstrosOriginais.where((monstro) {
@@ -112,6 +115,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
         title: const Text('Guia de Monstros'),
         centerTitle: true,
         actions: [
+          // Acesso rápido à Wishlist / Calculadora
           IconButton(
             icon: const Icon(Icons.calculate, color: Colors.orange),
             tooltip: 'Calculadora',
@@ -128,13 +132,13 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
           ? const MhwLoading()
           : Column(
         children: [
-          // === ÁREA DE FILTROS ===
+          // Área de Filtros Interativos
           Container(
-            color: Colors.brown[900], // Fundo levemente diferente para destacar
+            color: Colors.brown[900],
             padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
-                // Barra de Pesquisa de Nome
+                // Campo de Busca Dinâmica por Nome
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'Pesquisar por nome...',
@@ -152,7 +156,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
                   },
                 ),
                 const SizedBox(height: 10),
-                // Menu Dropdown de Espécies
+                // Dropdown Dinâmico de Espécies
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
@@ -162,7 +166,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
                   child: DropdownButton<String>(
                     value: especieSelecionada,
                     isExpanded: true,
-                    underline: const SizedBox(), // Esconde a linha padrão do botão
+                    underline: const SizedBox(),
                     dropdownColor: Colors.grey[900],
                     icon: const Icon(Icons.filter_list, color: Colors.orange),
                     items: especiesDisponiveis.map((especie) {
@@ -183,7 +187,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
             ),
           ),
 
-          // === LISTA DE RESULTADOS ===
+          // Renderização da Lista de Resultados (Cards)
           Expanded(
             child: monstrosFiltrados.isEmpty
                 ? const Center(child: Text('Nenhum monstro encontrado.'))
@@ -203,6 +207,7 @@ class _Tela1CriaturasState extends State<Tela1Criaturas> {
                     subtitle: Text('Espécie: ${monstro['species'] ?? 'N/A'}'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
+                      // Navega passando os dados da API selecionados
                       Navigator.push(
                         context,
                         MaterialPageRoute(

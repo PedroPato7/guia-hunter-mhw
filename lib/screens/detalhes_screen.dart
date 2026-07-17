@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-// === TELA 2: DETALHES ATUALIZADA ===
+// Tela responsável por exibir os detalhes completos de uma criatura em abas
 class Tela2Detalhes extends StatelessWidget {
+  // Detalhe gamer. 
   final dynamic monstro;
+  
   const Tela2Detalhes({super.key, required this.monstro});
 
   @override
   Widget build(BuildContext context) {
+    // Extração segura dos dados da API
     final nome = monstro['name'] ?? 'Desconhecido';
     final especieOriginal = monstro['species'] ?? 'N/A';
     final descricao = monstro['description'] ?? 'Sem descrição.';
@@ -32,7 +35,7 @@ class Tela2Detalhes extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // --- ABA 1: ECOLOGIA (Seu código original mantido) ---
+            // Aba 1: Informações gerais e locais de aparição
             SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -62,7 +65,7 @@ class Tela2Detalhes extends StatelessWidget {
               ),
             ),
 
-            // --- ABA 2: FRAQUEZAS E IMUNIDADES (Seu código original mantido) ---
+            // Aba 2: Efetividade elemental e imunidades
             SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -73,6 +76,7 @@ class Tela2Detalhes extends StatelessWidget {
                   if (fraquezas.isEmpty && resistencias.isEmpty)
                     const Text('Nenhuma informação de combate registrada para esta criatura.')
                   else ...[
+                    // Renderiza as fraquezas (Estrelas)
                     ...fraquezas.map((f) {
                       int estrelas = f['stars'] ?? 0;
                       if (estrelas == 0) return const SizedBox.shrink();
@@ -85,6 +89,7 @@ class Tela2Detalhes extends StatelessWidget {
                         ),
                       );
                     }),
+                    // Renderiza as resistências (Imunidades)
                     ...resistencias.map((r) {
                       return Card(
                         color: Colors.black45,
@@ -100,7 +105,7 @@ class Tela2Detalhes extends StatelessWidget {
               ),
             ),
 
-            // --- ABA 3: DROPS (Agora usando o Widget Interativo) ---
+            // Aba 3: Lista de materiais dropados pelo monstro
             AbaDrops(recompensas: recompensas),
           ],
         ),
@@ -108,6 +113,7 @@ class Tela2Detalhes extends StatelessWidget {
     );
   }
 
+  // Define os ícones correspondentes a cada elemento/status do jogo
   Widget _getIconeElemento(String elemento) {
     switch (elemento.toLowerCase()) {
       case 'fire': return const Icon(Icons.local_fire_department, color: Colors.red);
@@ -125,7 +131,7 @@ class Tela2Detalhes extends StatelessWidget {
   }
 }
 
-// === NOVO WIDGET: ABA DE DROPS INTERATIVA ===
+// Widget Stateful para gerenciar a exibição e os filtros da aba de Drops
 class AbaDrops extends StatefulWidget {
   final List<dynamic> recompensas;
 
@@ -136,12 +142,11 @@ class AbaDrops extends StatefulWidget {
 }
 
 class _AbaDropsState extends State<AbaDrops> {
-  // Estado que guarda qual rank o usuário está vendo
   String _rankSelecionado = 'low';
 
   @override
   Widget build(BuildContext context) {
-    // === TRATAMENTO DE ERRO / DADOS FALTANTES (EX: PUKEI-PUKEI) ===
+    // Tratamento para criaturas sem drops registrados na API
     if (widget.recompensas.isEmpty) {
       return Center(
         child: Padding(
@@ -167,9 +172,8 @@ class _AbaDropsState extends State<AbaDrops> {
       );
     }
 
-    // === SE HOUVER DADOS, CONTINUA A LÓGICA NORMAL DE FILTRAGEM ===
+    // Filtra e estrutura os drops com base no rank selecionado
     List<Map<String, dynamic>> dropsParaMostrar = [];
-
     for (var reward in widget.recompensas) {
       var condicoesDoRank = (reward['conditions'] as List? ?? [])
           .where((condicao) => condicao['rank'] == _rankSelecionado)
@@ -185,6 +189,7 @@ class _AbaDropsState extends State<AbaDrops> {
 
     return Column(
       children: [
+        // Botões de filtro de Rank
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           color: Colors.brown[900]?.withOpacity(0.3),
@@ -211,6 +216,8 @@ class _AbaDropsState extends State<AbaDrops> {
             ],
           ),
         ),
+        
+        // Lista de Drops renderizada
         Expanded(
           child: dropsParaMostrar.isEmpty
               ? Center(

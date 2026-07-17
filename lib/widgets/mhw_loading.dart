@@ -12,7 +12,6 @@ class MhwLoading extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Aqui no futuro você pode trocar por um Image.asset('assets/loading.gif')
           const CircularProgressIndicator(
             color: AppColors.douradoMHW,
             strokeWidth: 3,

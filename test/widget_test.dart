@@ -1,30 +1,29 @@
-  // This is a basic Flutter widget test.
-  //
-  // To perform an interaction with a widget in your test, use the WidgetTester
-  // utility in the flutter_test package. For example, you can send tap and scroll
-  // gestures. You can also use WidgetTester to find child widgets in the widget
-  // tree, read text, and verify that the values of widget properties are correct.
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:guia_mhw_app/screens/detalhes_screen.dart'; 
 
-  import 'package:flutter/material.dart';
-  import 'package:flutter_test/flutter_test.dart';
+void main() {
+  testWidgets('Teste de Widget: Renderização da UI de Detalhes com dados Mockados', (WidgetTester tester) async {
+    
+    // Mock de dados simulando o payload (JSON) retornado pela API
+    final mockMonstro = {
+      'name': 'Rathalos Mock',
+      'species': 'Flying Wyvern',
+      'description': 'Rei dos céus.',
+      'locations': [],
+      'weaknesses': [],
+      'resistances': [],
+      'rewards': []
+    };
 
-  import 'package:guia_mhw_app/main.dart';
+    // Constrói o widget isoladamente no ambiente de teste
+    await tester.pumpWidget(MaterialApp(
+      home: Tela2Detalhes(monstro: mockMonstro),
+    ));
 
-  void main() {
-    testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-      // Build our app and trigger a frame.
-      await tester.pumpWidget(const GuiaCacadorApp());
-
-      // Verify that our counter starts at 0.
-      expect(find.text('0'), findsOneWidget);
-      expect(find.text('1'), findsNothing);
-
-      // Tap the '+' icon and trigger a frame.
-      await tester.tap(find.byIcon(Icons.add));
-      await tester.pump();
-
-      // Verify that our counter has incremented.
-      expect(find.text('0'), findsNothing);
-      expect(find.text('1'), findsOneWidget);
-    });
-  }
+    // Asserts visuais: Verifica se os componentes de texto e ícones foram desenhados na tela
+    expect(find.text('Rathalos Mock'), findsOneWidget);
+    expect(find.text('Espécie: Flying Wyvern'), findsOneWidget);
+    expect(find.byIcon(Icons.menu_book), findsOneWidget);
+  });
+}
